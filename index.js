@@ -4,6 +4,8 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 const app = express();
 const PORT = 3000;
 const MONGODB_URI = process.env.MONGODB_URI; // replace with your MongoDB URI
@@ -26,6 +28,8 @@ db.once("open", () => {
 // Middleware
 app.use(bodyParser.json());
 
+const JSON_FILE = path.join(__dirname, "gunjan.json");
+
 // Define schema for logs
 const searchLogSchema = new mongoose.Schema({
   searchTerm: String,
@@ -35,6 +39,41 @@ const searchLogSchema = new mongoose.Schema({
 });
 
 const SearchLog = mongoose.model("SearchLog", searchLogSchema);
+
+// Endpoint to get users
+app.get("/users", (req, res) => {
+  fs.readFile(JSON_FILE, "utf8", (err, data) => {
+    if (err) {
+      console.error("Error reading JSON file:", err);
+      return res.status(500).send("Error reading users");
+    }
+    res.json(JSON.parse(data));
+  });
+});
+
+// Endpoint to remove a user
+app.delete("/users/:username", (req, res) => {
+  const { username } = req.params;
+
+  fs.readFile(JSON_FILE, "utf8", (err, data) => {
+    if (err) {
+      console.error("Error reading JSON file:", err);
+      return res.status(500).send("Error reading users");
+    }
+
+    const users = JSON.parse(data);
+    const updatedUsers = users.filter((user) => user.username !== username);
+
+    fs.writeFile(JSON_FILE, JSON.stringify(updatedUsers, null, 2), (err) => {
+      if (err) {
+        console.error("Error writing JSON file:", err);
+        return res.status(500).send("Error saving users");
+      }
+      res.json({ message: "User removed successfully", updatedUsers });
+    });
+  });
+});
+
 
 // Route to save search and filter logs
 app.post("/api/logs", async (req, res) => {
